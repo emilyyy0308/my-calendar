@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>我的日曆</title>
+<meta name="description" content="個人日曆：月曆、手帳式週計畫、手寫、農曆與台灣國定假日">
+<meta name="theme-color" content="#eef1f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12161e" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="我的日曆">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+html{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+img{max-width:100%}
+/* Layout: month grid as the main sheet, a day agenda beside it (stacks under it on phones) */
+:root{
+  --bg:#eef1f5; --surface:#ffffff; --line:#d9dee7; --ink:#1c2433; --muted:#667085;
+  --accent:#2f5bd3; --accent-soft:#e3eafb; --today:#2f5bd3; --holiday:#c2412d; --weekend:#f6f7fa;
+  --c-work:#2f5bd3; --c-life:#d97a1f; --c-health:#1f9a6a; --c-study:#8a4fd1; --c-other:#6b7385;
+  --pen-ink:#1c2433; --pen-blue:#2448b8; --pen-red:#c0392b; --pen-green:#1e8a5a; --pen-hl:#ffd23f;
+  --font-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --font-num:"Space Grotesk","Noto Sans TC",ui-sans-serif,system-ui,sans-serif;
+  --radius:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12161e; --surface:#1a1f2a; --line:#2c3342; --ink:#e7ebf2; --muted:#9aa3b5;
+  --accent:#7d9cf0; --accent-soft:#25304a; --today:#7d9cf0; --holiday:#f08a73; --weekend:#161b25;
+  --c-work:#7d9cf0; --c-life:#f0a35a; --c-health:#4fc797; --c-study:#b48cf0; --c-other:#9aa3b5;
+  --pen-ink:#e7ebf2; --pen-blue:#8fb0ff; --pen-red:#ff8a7a; --pen-green:#5fd39c; --pen-hl:#e6c53a;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161e; --surface:#1a1f2a; --line:#2c3342; --ink:#e7ebf2; --muted:#9aa3b5;
+  --accent:#7d9cf0; --accent-soft:#25304a; --today:#7d9cf0; --holiday:#f08a73; --weekend:#161b25;
+  --c-work:#7d9cf0; --c-life:#f0a35a; --c-health:#4fc797; --c-study:#b48cf0; --c-other:#9aa3b5;
+  --pen-ink:#e7ebf2; --pen-blue:#8fb0ff; --pen-red:#ff8a7a; --pen-green:#5fd39c; --pen-hl:#e6c53a;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1240px;margin:0 auto;padding-block:20px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:16px}
+header.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px}
+.month-title{font-family:var(--font-num);font-size:clamp(26px,4vw,36px);font-weight:700;letter-spacing:-.01em;margin:0;display:flex;align-items:baseline;gap:10px;min-width:0}
+.month-title small{font-family:var(--font-body);font-size:15px;font-weight:500;color:var(--muted)}
+.nav{display:flex;gap:6px;margin-left:auto}
+button{font:inherit;color:inherit;cursor:pointer}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;min-height:36px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:500}
+.btn.danger{color:var(--holiday)}
+.icon-btn{width:36px;padding:0;display:grid;place-items:center;font-size:18px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.filters{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 12px 3px 9px;font-size:13px}
+.chip .dot{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.chip[aria-pressed="false"]{opacity:.45}
+.chip[aria-pressed="false"] .dot{background:transparent;box-shadow:inset 0 0 0 1.5px var(--c)}
+.status{font-size:12px;color:var(--muted);margin-left:auto;align-self:center}
+main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+@media (max-width:900px){main{grid-template-columns:minmax(0,1fr)}}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.dow div{padding:8px 10px;font-size:12px;letter-spacing:.08em;color:var(--muted);border-bottom:1px solid var(--line)}
+.dow div:first-child,.dow div:last-child{color:var(--holiday)}
+.cell{min-height:112px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px 6px 8px;text-align:left;background:var(--surface);border-top:0;border-left:0;display:flex;flex-direction:column;gap:3px;min-width:0;position:relative}
+.cell:nth-child(7n){border-right:0}
+.cell.wkend{background:var(--weekend)}
+.cell.out .num,.cell.out .lunar{opacity:.4}
+.cell:hover{background:var(--accent-soft)}
+.cell.sel{box-shadow:inset 0 0 0 2px var(--accent)}
+.cell-head{display:flex;align-items:baseline;gap:6px;min-width:0}
+.num{font-family:var(--font-num);font-weight:500;font-size:15px;font-variant-numeric:tabular-nums;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;flex:none}
+.cell.today .num{background:var(--today);color:var(--surface);font-weight:700}
+.cell.hol .num{color:var(--holiday)}
+.cell.today.hol .num{color:var(--surface)}
+.lunar{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hol-name{font-size:11px;color:var(--holiday);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev{font-size:12px;line-height:1.35;padding:1px 6px;border-radius:4px;background:color-mix(in srgb,var(--c) 14%,transparent);border-left:3px solid var(--c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev time{font-family:var(--font-num);font-variant-numeric:tabular-nums;color:var(--muted);margin-right:4px}
+.more{font-size:11px;color:var(--muted);padding-left:6px}
+.dots{display:none;gap:3px;flex-wrap:wrap}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--c)}
+@media (max-width:640px){
+  .cell{min-height:64px;padding:4px 2px;align-items:center}
+  .cell-head{flex-direction:column;align-items:center;gap:0}
+  .ev,.more,.hol-name{display:none}
+  .lunar{font-size:10px}
+  .dots{display:flex;justify-content:center}
+}
+aside.day{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;display:grid;gap:14px;position:sticky;top:max(16px,env(safe-area-inset-top,0px))}
+@media (max-width:900px){aside.day{position:static}}
+.day h2{margin:0;font-family:var(--font-num);font-size:22px;font-weight:700;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.day h2 span{font-family:var(--font-body);font-size:13px;font-weight:400;color:var(--muted)}
+.day .hol-tag{display:inline-block;font-size:12px;color:var(--holiday);border:1px solid currentColor;border-radius:999px;padding:0 8px}
+.agenda{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.agenda li button{width:100%;text-align:left;background:transparent;border:1px solid var(--line);border-radius:8px;padding:9px 11px 9px 14px;display:grid;grid-template-columns:62px minmax(0,1fr);gap:2px 10px;position:relative}
+.agenda li button::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--c)}
+.agenda li button:hover{border-color:var(--c)}
+.agenda .t{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted)}
+.agenda .ttl{font-weight:500;min-width:0;overflow-wrap:anywhere}
+.agenda .note{grid-column:2;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.tag{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-left:6px;font-weight:400}
+.empty{color:var(--muted);font-size:14px;margin:0}
+form.add{display:grid;gap:10px;border-top:1px solid var(--line);padding-top:14px}
+form.add h3{margin:0;font-size:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1 1 90px;min-width:0}
+label.f{display:grid;gap:3px;font-size:12px;color:var(--muted)}
+input,select,textarea{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:7px 9px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:56px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:6px 14px;min-height:34px;font-size:14px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:700}
+/* 手帳式週計畫：左頁週一到週四，右頁週五到週日加本週筆記 */
+.pwrap{display:grid;gap:10px;min-width:0}
+.pscroll{overflow-x:auto;border-radius:var(--radius)}
+.pstage{position:relative;min-width:560px}
+#ink{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;border-radius:var(--radius)}
+.pstage.inking #ink{pointer-events:auto;touch-action:none;cursor:crosshair}
+.pstage.inking .planner{user-select:none;-webkit-user-select:none}
+.inkbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:4px}
+.inktools{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.inkbar .btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.sw{width:28px;height:28px;border-radius:50%;border:2px solid var(--surface);background:var(--c);box-shadow:0 0 0 1px var(--line);padding:0}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent)}
+.inkstat{font-size:12px;color:var(--muted);margin-left:auto}
+.planner{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(4,minmax(0,1fr));aspect-ratio:5/4;grid-auto-flow:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;position:relative}
+.planner::after{content:"";position:absolute;top:0;bottom:0;left:50%;width:10px;margin-left:-5px;background:linear-gradient(to right,transparent,color-mix(in srgb,var(--ink) 7%,transparent),transparent);pointer-events:none}
+.pday{border-bottom:1px solid var(--line);padding:10px 14px 8px;display:flex;flex-direction:column;gap:4px;min-width:0;min-height:0;overflow:hidden}
+.pday:nth-child(-n+4){border-right:1px solid var(--line)}
+.pday:nth-child(4n){border-bottom:0}
+.pday.wkend{background:var(--weekend)}
+.pday.sel{box-shadow:inset 0 0 0 2px var(--accent)}
+.phead{display:flex;align-items:center;gap:10px;min-width:0;background:transparent;border:0;padding:0;text-align:left}
+.pdate{font-family:var(--font-num);font-size:26px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;min-width:34px}
+.pday.today .pdate{color:var(--today)}
+.pday.hol .pdate,.pday .wd.red{color:var(--holiday)}
+.pmeta{display:grid;line-height:1.25;min-width:0}
+.wd{font-size:13px;font-weight:700}
+.pmeta small{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.today-tag{font-size:11px;color:var(--surface);background:var(--today);border-radius:999px;padding:0 8px;margin-left:auto;flex:none}
+.plines{flex:1;display:grid;align-content:start;gap:0;background-image:repeating-linear-gradient(to bottom,transparent 0 29px,var(--line) 29px 30px);background-attachment:local;min-height:0;overflow-y:auto}
+.pev{display:flex;align-items:center;gap:8px;height:30px;background:transparent;border:0;padding:0 4px;text-align:left;min-width:0;border-radius:4px}
+.pev:hover{background:color-mix(in srgb,var(--c) 12%,transparent)}
+.pev i{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.pev time{font-family:var(--font-num);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+.pev span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+.padd{align-self:flex-start;background:transparent;border:0;color:var(--muted);font-size:13px;padding:2px 4px;border-radius:4px}
+.padd:hover{color:var(--accent);background:var(--accent-soft)}
+.pnotes h4{margin:0;font-size:13px;font-weight:700;letter-spacing:.06em;color:var(--muted)}
+.pnotes textarea{flex:1;min-height:0;border:0;border-radius:0;padding:0 4px;background:transparent;line-height:30px;font-size:14px;background-image:repeating-linear-gradient(to bottom,transparent 0 29px,var(--line) 29px 30px);background-attachment:local;resize:none}
+.pnotes textarea:focus{outline:none}
+.pnotes:focus-within{box-shadow:inset 0 0 0 2px var(--accent-soft)}
+.pnotes .saved{font-size:11px;color:var(--muted);min-height:16px}
+.foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+.foot span{margin-right:auto}
+label.btn{display:inline-flex;align-items:center}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:14px;z-index:20}
+.notice{font-size:12px;color:var(--muted);margin:0}
+@media (prefers-reduced-motion:no-preference){.cell,.btn,.chip{transition:background .15s,border-color .15s,opacity .15s}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <h1 class="month-title" id="title">2026 年 11 月 <small id="lunarMonth"></small></h1>
+    <div class="nav">
+      <div class="seg" role="group" aria-label="檢視方式">
+        <button type="button" id="modeMonth" aria-pressed="true">月</button>
+        <button type="button" id="modeWeek" aria-pressed="false">週</button>
+      </div>
+      <button class="btn icon-btn" id="prev" aria-label="上一頁">‹</button>
+      <button class="btn" id="todayBtn">今天</button>
+      <button class="btn icon-btn" id="next" aria-label="下一頁">›</button>
+    </div>
+  </header>
+  <div class="filters" id="filters"></div>
+  <main>
+    <section class="pwrap" id="pwrap" aria-label="週計畫" hidden>
+      <div class="inkbar">
+        <button type="button" class="btn" id="inkToggle" aria-pressed="false">✎ 手寫</button>
+        <div class="inktools" id="inktools" hidden>
+          <div class="inktools" role="group" aria-label="筆的顏色">
+            <button type="button" class="sw" data-color="ink" style="--c:var(--pen-ink)" aria-label="黑色" aria-pressed="true"></button>
+            <button type="button" class="sw" data-color="blue" style="--c:var(--pen-blue)" aria-label="藍色" aria-pressed="false"></button>
+            <button type="button" class="sw" data-color="red" style="--c:var(--pen-red)" aria-label="紅色" aria-pressed="false"></button>
+            <button type="button" class="sw" data-color="green" style="--c:var(--pen-green)" aria-label="綠色" aria-pressed="false"></button>
+          </div>
+          <div class="seg" role="group" aria-label="粗細">
+            <button type="button" data-size="1.5" aria-pressed="false">細</button>
+            <button type="button" data-size="3" aria-pressed="true">中</button>
+            <button type="button" data-size="6" aria-pressed="false">粗</button>
+          </div>
+          <div class="seg" role="group" aria-label="工具">
+            <button type="button" data-tool="pen" aria-pressed="true">筆</button>
+            <button type="button" data-tool="hl" aria-pressed="false">螢光筆</button>
+            <button type="button" data-tool="erase" aria-pressed="false">橡皮擦</button>
+          </div>
+          <button type="button" class="btn" id="inkUndo">復原</button>
+          <button type="button" class="btn danger" id="inkClear">清除本週手寫</button>
+        </div>
+        <span class="inkstat" id="inkStat"></span>
+      </div>
+      <div class="pscroll"><div class="pstage" id="pstage">
+        <div class="planner" id="planner"></div>
+        <canvas id="ink" aria-label="手寫層"></canvas>
+      </div></div>
+    </section>
+    <section class="sheet" id="sheet" aria-label="月曆">
+      <div class="dow"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>
+      <div class="grid" id="grid"></div>
+    </section>
+    <aside class="day" aria-live="polite">
+      <h2 id="dayTitle"></h2>
+      <ul class="agenda" id="agenda"></ul>
+      <form class="add" id="form" autocomplete="off">
+        <h3 id="formTitle">新增行程</h3>
+        <label class="f">標題<input id="fTitle" required maxlength="80" placeholder="例如：牙醫回診"></label>
+        <div class="row">
+          <label class="f">日期<input id="fDate" type="date" required></label>
+          <label class="f">分類<select id="fCat"></select></label>
+        </div>
+        <div class="row">
+          <label class="f">開始<input id="fStart" type="time"></label>
+          <label class="f">結束<input id="fEnd" type="time"></label>
+        </div>
+        <label class="f">備註<textarea id="fNote" maxlength="500" placeholder="地點、要帶的東西…"></textarea></label>
+        <div class="actions">
+          <button class="btn primary" type="submit" id="saveBtn">新增</button>
+          <button class="btn" type="button" id="cancelBtn" hidden>取消編輯</button>
+          <button class="btn danger" type="button" id="delBtn" hidden>刪除</button>
+        </div>
+        <p class="notice" id="storeNote"></p>
+      </form>
+    </aside>
+  </main>
+  <footer class="foot">
+    <span id="footInfo">資料存在這台裝置上，沒有網路也能用。</span>
+    <button class="btn" type="button" id="exportBtn">匯出備份</button>
+    <label class="btn" for="importFile">匯入備份</label>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+  </footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const CATS={work:{n:"工作",v:"--c-work"},life:{n:"生活",v:"--c-life"},health:{n:"健康",v:"--c-health"},study:{n:"學習",v:"--c-study"},other:{n:"其他",v:"--c-other"}};
+// 台灣國定假日（放假日當天；不含補班補假）
+const HOLIDAYS={
+ "2026-01-01":"元旦","2026-02-16":"除夕","2026-02-17":"春節","2026-02-18":"春節","2026-02-19":"春節","2026-02-20":"春節",
+ "2026-02-28":"和平紀念日","2026-04-04":"兒童節","2026-04-05":"清明節","2026-05-01":"勞動節","2026-06-19":"端午節",
+ "2026-09-25":"中秋節","2026-09-28":"教師節","2026-10-10":"國慶日","2026-10-25":"光復節","2026-12-25":"行憲紀念日",
+ "2027-01-01":"元旦","2027-02-05":"除夕","2027-02-06":"春節","2027-02-07":"春節","2027-02-08":"春節","2027-02-28":"和平紀念日",
+ "2027-04-04":"兒童節","2027-04-05":"清明節","2027-05-01":"勞動節","2027-06-09":"端午節","2027-09-15":"中秋節",
+ "2027-09-28":"教師節","2027-10-10":"國慶日","2027-10-25":"光復節","2027-12-25":"行憲紀念日"};
+const pad=n=>String(n).padStart(2,"0");
+const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parse=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d,12)};
+const WD="日一二三四五六";
+let lunarFmt=null;try{lunarFmt=new Intl.DateTimeFormat("zh-TW-u-ca-chinese",{month:"long",day:"numeric"})}catch(e){}
+const LD=["","初一","初二","初三","初四","初五","初六","初七","初八","初九","初十","十一","十二","十三","十四","十五","十六","十七","十八","十九","二十","廿一","廿二","廿三","廿四","廿五","廿六","廿七","廿八","廿九","三十"];
+function lunar(d){if(!lunarFmt)return null;try{const p=lunarFmt.formatToParts(d);const m=p.find(x=>x.type==="month")?.value||"";const dn=+(p.find(x=>x.type==="day")?.value);if(!dn)return null;return{m,d:LD[dn]||String(dn),first:dn===1}}catch(e){return null}}
+
+const today=new Date();today.setHours(12,0,0,0);
+function mondayOf(d){const x=new Date(d);x.setHours(12,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x}
+function isoWeek(d){const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-day);const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil(((t-y0)/864e5+1)/7)}
+const state={mode:"month",view:new Date(today.getFullYear(),today.getMonth(),1,12),week:mondayOf(today),sel:iso(today),events:new Map(),notes:new Map(),hidden:new Set(),editing:null};
+try{const h=JSON.parse(localStorage.getItem("cal.hidden")||"[]");h.forEach(x=>state.hidden.add(x))}catch(e){}
+try{if(localStorage.getItem("cal.mode")==="week")state.mode="week"}catch(e){}
+
+const $=id=>document.getElementById(id);
+const fCat=$("fCat");
+for(const[k,c]of Object.entries(CATS)){const o=document.createElement("option");o.value=k;o.textContent=c.n;fCat.append(o)}
+
+function renderFilters(){
+  const box=$("filters");box.textContent="";
+  for(const[k,c]of Object.entries(CATS)){
+    const b=document.createElement("button");b.className="chip";b.type="button";b.style.setProperty("--c",`var(${c.v})`);
+    b.setAttribute("aria-pressed",String(!state.hidden.has(k)));
+    const dot=document.createElement("span");dot.className="dot";b.append(dot,c.n);
+    b.onclick=()=>{state.hidden.has(k)?state.hidden.delete(k):state.hidden.add(k);try{localStorage.setItem("cal.hidden",JSON.stringify([...state.hidden]))}catch(e){}renderFilters();render()};
+    box.append(b);
+  }
+  const s=document.createElement("span");s.className="status";s.id="status";s.textContent=statusText;box.append(s);
+}
+let statusText="";
+function setStatus(t){statusText=t;const s=$("status");if(s)s.textContent=t}
+
+function eventsOn(date){
+  return [...state.events.values()].filter(e=>e.date===date&&!state.hidden.has(e.cat in CATS?e.cat:"other"))
+    .sort((a,b)=>(a.start||"").localeCompare(b.start||"")||a.title.localeCompare(b.title));
+}
+const catVar=c=>`var(${(CATS[c]||CATS.other).v})`;
+
+function render(){
+  const wk=state.mode==="week";
+  $("pwrap").hidden=!wk;$("sheet").hidden=wk;
+  $("modeMonth").setAttribute("aria-pressed",String(!wk));$("modeWeek").setAttribute("aria-pressed",String(wk));
+  $("prev").setAttribute("aria-label",wk?"上一週":"上個月");$("next").setAttribute("aria-label",wk?"下一週":"下個月");
+  if(wk){renderWeek();renderDay();return}
+  const v=state.view,y=v.getFullYear(),m=v.getMonth();
+  $("title").firstChild.textContent=`${y} 年 ${m+1} 月 `;
+  const lm=lunar(new Date(y,m,15,12));$("lunarMonth").textContent=lm?`農曆${lm.m}前後`:"";
+  const grid=$("grid");grid.textContent="";
+  const start=new Date(y,m,1,12);start.setDate(1-start.getDay());
+  const weeks=Math.ceil((new Date(y,m,1).getDay()+new Date(y,m+1,0).getDate())/7);
+  for(let i=0;i<weeks*7;i++){
+    const d=new Date(start);d.setDate(start.getDate()+i);const k=iso(d);
+    const cell=document.createElement("button");cell.type="button";cell.className="cell";
+    if(d.getMonth()!==m)cell.classList.add("out");
+    if(d.getDay()===0||d.getDay()===6)cell.classList.add("wkend");
+    if(k===iso(today))cell.classList.add("today");
+    if(k===state.sel)cell.classList.add("sel");
+    const hol=HOLIDAYS[k];if(hol)cell.classList.add("hol");
+    const head=document.createElement("div");head.className="cell-head";
+    const num=document.createElement("span");num.className="num";num.textContent=d.getDate();head.append(num);
+    const l=lunar(d);if(l){const ls=document.createElement("span");ls.className="lunar";ls.textContent=l.first?l.m:l.d;head.append(ls)}
+    cell.append(head);
+    if(hol){const h=document.createElement("div");h.className="hol-name";h.textContent=hol;cell.append(h)}
+    const evs=eventsOn(k);const dots=document.createElement("div");dots.className="dots";
+    evs.forEach((e,j)=>{
+      const c=catVar(e.cat);
+      if(j<3){const el=document.createElement("div");el.className="ev";el.style.setProperty("--c",c);
+        if(e.start){const t=document.createElement("time");t.textContent=e.start;el.append(t)}
+        el.append(e.title);cell.append(el)}
+      if(j<4){const i=document.createElement("i");i.style.setProperty("--c",c);dots.append(i)}
+    });
+    if(evs.length>3){const mo=document.createElement("div");mo.className="more";mo.textContent=`還有 ${evs.length-3} 項`;cell.append(mo)}
+    cell.append(dots);
+    cell.setAttribute("aria-label",`${d.getMonth()+1}月${d.getDate()}日${hol?"，"+hol:""}，${evs.length} 項行程`);
+    cell.onclick=()=>{state.sel=k;if(d.getMonth()!==m)state.view=new Date(d.getFullYear(),d.getMonth(),1,12);if(!state.editing)$("fDate").value=k;render()};
+    grid.append(cell);
+  }
+  renderDay();
+}
+
+const weekKey=()=>"w"+iso(state.week);
+function renderWeek(){
+  const s=state.week,e=new Date(s);e.setDate(s.getDate()+6);
+  $("title").firstChild.textContent=s.getMonth()===e.getMonth()
+    ?`${s.getFullYear()} 年 ${s.getMonth()+1} 月 ${s.getDate()}–${e.getDate()} 日 `
+    :`${s.getFullYear()} 年 ${s.getMonth()+1}/${s.getDate()} – ${e.getFullYear()!==s.getFullYear()?e.getFullYear()+" 年 ":""}${e.getMonth()+1}/${e.getDate()} `;
+  $("lunarMonth").textContent=`第 ${isoWeek(s)} 週`;
+  loadInk(weekKey());
+  const box=$("planner");
+  const noteEl=$("wNote");const keepNote=noteEl&&document.activeElement===noteEl&&noteEl.dataset.week===weekKey();
+  if(keepNote){[...box.children].forEach(c=>{if(!c.classList.contains("pnotes"))c.remove()})}else box.textContent="";
+  const frag=document.createDocumentFragment();
+  for(let i=0;i<7;i++){
+    const d=new Date(s);d.setDate(s.getDate()+i);const k=iso(d);
+    const day=document.createElement("div");day.className="pday";
+    if(d.getDay()===0||d.getDay()===6)day.classList.add("wkend");
+    if(k===iso(today))day.classList.add("today");
+    if(k===state.sel)day.classList.add("sel");
+    const hol=HOLIDAYS[k];if(hol)day.classList.add("hol");
+    const head=document.createElement("button");head.type="button";head.className="phead";
+    const dn=document.createElement("span");dn.className="pdate";dn.textContent=d.getDate();
+    const meta=document.createElement("span");meta.className="pmeta";
+    const wd=document.createElement("span");wd.className="wd"+(d.getDay()===0||d.getDay()===6?" red":"");wd.textContent=`週${WD[d.getDay()]}　${d.getMonth()+1}/${d.getDate()}`;
+    const l=lunar(d);const sm=document.createElement("small");sm.textContent=[l?"農曆"+(l.first?l.m+l.d:l.d):"",hol||""].filter(Boolean).join(" · ");
+    meta.append(wd,sm);head.append(dn,meta);
+    if(k===iso(today)){const t=document.createElement("span");t.className="today-tag";t.textContent="今天";head.append(t)}
+    head.onclick=()=>{state.sel=k;if(!state.editing)$("fDate").value=k;render()};
+    head.setAttribute("aria-label",`選擇 ${d.getMonth()+1}月${d.getDate()}日`);
+    const lines=document.createElement("div");lines.className="plines";
+    for(const ev of eventsOn(k)){
+      const b=document.createElement("button");b.type="button";b.className="pev";b.style.setProperty("--c",catVar(ev.cat));
+      const dot=document.createElement("i");const t=document.createElement("time");t.textContent=ev.start||"全天";
+      const ttl=document.createElement("span");ttl.textContent=ev.title;b.append(dot,t,ttl);
+      b.onclick=()=>{state.sel=k;render();startEdit(ev.id)};b.setAttribute("aria-label",`編輯：${ev.title}`);
+      lines.append(b);
+    }
+    const add=document.createElement("button");add.type="button";add.className="padd";add.textContent="＋ 新增";
+    add.onclick=()=>{state.sel=k;resetForm();render();$("fTitle").focus()};
+    day.append(head,lines,add);frag.append(day);
+  }
+  if(keepNote){box.insertBefore(frag,box.firstChild);return}
+  const notes=document.createElement("div");notes.className="pday pnotes";
+  const h=document.createElement("h4");h.textContent="本週筆記";
+  const ta=document.createElement("textarea");ta.id="wNote";ta.dataset.week=weekKey();ta.maxLength=2000;ta.placeholder="這週的目標、待辦、想記下的事…";ta.setAttribute("aria-label","本週筆記");
+  ta.value=state.notes.get(weekKey())?.text||"";
+  const sv=document.createElement("div");sv.className="saved";sv.id="noteSaved";
+  let tmr;ta.oninput=()=>{sv.textContent="輸入中…";clearTimeout(tmr);tmr=setTimeout(()=>saveNote(ta.dataset.week,ta.value),800)};
+  ta.onblur=()=>{clearTimeout(tmr);if((state.notes.get(ta.dataset.week)?.text||"")!==ta.value)saveNote(ta.dataset.week,ta.value)};
+  notes.append(h,ta,sv);frag.append(notes);box.append(frag);
+}
+async function saveNote(key,text){
+  const sv=$("noteSaved");
+  try{
+    if(notesCol)await notesCol.doc(key).set({text,updatedAt:Date.now()});
+    else{state.notes.set(key,{text});try{localStorage.setItem("cal.notes",JSON.stringify([...state.notes]))}catch(e){}}
+    if(sv)sv.textContent="已儲存";
+  }catch(e){if(sv)sv.textContent="筆記沒有存成功，請稍後再試"}
+}
+
+/* ---- 手寫層：座標以週計畫寬度為基準（0–10000），不同裝置大小都能對齊 ---- */
+const S=10000,cv=$("ink"),ctx=cv.getContext("2d"),stage=$("pstage");
+const ink={on:false,tool:"pen",color:"ink",size:3,strokes:[],undo:[],drawing:null,erased:null,penSeen:false,key:null,unsub:null,timer:null,saving:false};
+let inkCol=null;
+const penColor=c=>getComputedStyle(document.documentElement).getPropertyValue("--pen-"+c).trim()||"#888";
+function sizeCanvas(){const r=stage.getBoundingClientRect();if(!r.width)return;const dpr=window.devicePixelRatio||1;cv.width=Math.round(r.width*dpr);cv.height=Math.round(r.height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);redraw()}
+try{new ResizeObserver(sizeCanvas).observe(stage)}catch(e){addEventListener("resize",sizeCanvas)}
+try{matchMedia("(prefers-color-scheme: dark)").addEventListener("change",redraw)}catch(e){}
+function drawStroke(s,W){
+  const p=s.p,k=W/S;if(!p||p.length<3)return;
+  ctx.save();ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle=ctx.fillStyle=penColor(s.c);
+  const base=s.w*W/800;
+  if(s.t==="hl"){
+    ctx.globalAlpha=.35;ctx.lineWidth=base;ctx.beginPath();ctx.moveTo(p[0]*k,p[1]*k);
+    for(let i=3;i<p.length;i+=3)ctx.lineTo(p[i]*k,p[i+1]*k);
+    if(p.length===3)ctx.lineTo(p[0]*k+.1,p[1]*k);ctx.stroke();
+  }else if(p.length===3){
+    ctx.beginPath();ctx.arc(p[0]*k,p[1]*k,base*(.4+1.2*p[2]/100)/2,0,Math.PI*2);ctx.fill();
+  }else{
+    for(let i=3;i<p.length;i+=3){
+      ctx.lineWidth=base*(.4+1.2*((p[i-1]+p[i+2])/2)/100);
+      ctx.beginPath();ctx.moveTo(p[i-3]*k,p[i-2]*k);ctx.lineTo(p[i]*k,p[i+1]*k);ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+function redraw(){
+  const W=stage.getBoundingClientRect().width;if(!W)return;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  for(const s of ink.strokes)drawStroke(s,W);
+  if(ink.drawing)drawStroke(ink.drawing,W);
+}
+function toPt(e){
+  const r=cv.getBoundingClientRect();
+  const pr=e.pointerType==="pen"?Math.max(5,Math.round((e.pressure||.5)*100)):50;
+  return[Math.round((e.clientX-r.left)/r.width*S),Math.round((e.clientY-r.top)/r.width*S),pr];
+}
+function eraseAt(pt){
+  const W=stage.getBoundingClientRect().width,rad=14/W*S,r2=rad*rad;
+  const keep=[];let hit=false;
+  for(const s of ink.strokes){
+    let near=false;for(let i=0;i<s.p.length;i+=3){const dx=s.p[i]-pt[0],dy=s.p[i+1]-pt[1];if(dx*dx+dy*dy<r2){near=true;break}}
+    if(near){ink.erased.push(s);hit=true}else keep.push(s);
+  }
+  if(hit){ink.strokes=keep;redraw()}
+}
+cv.addEventListener("pointerdown",e=>{
+  if(!ink.on)return;
+  if(e.pointerType==="pen")ink.penSeen=true;
+  if(e.pointerType==="touch"&&ink.penSeen)return; // 用過觸控筆後忽略手掌和手指
+  if(e.button>0||ink.drawing||ink.erased)return;
+  e.preventDefault();try{cv.setPointerCapture(e.pointerId)}catch(_){}
+  ink.pid=e.pointerId;const pt=toPt(e);
+  if(ink.tool==="erase"){ink.erased=[];eraseAt(pt);return}
+  const hl=ink.tool==="hl";
+  ink.drawing={c:hl?"hl":ink.color,w:hl?ink.size*5+6:ink.size,t:hl?"hl":"pen",p:pt};
+  redraw();
+});
+cv.addEventListener("pointermove",e=>{
+  if(e.pointerId!==ink.pid||(!ink.drawing&&!ink.erased))return;
+  e.preventDefault();
+  const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
+  for(const ev of (evs.length?evs:[e])){
+    const pt=toPt(ev);
+    if(ink.erased){eraseAt(pt);continue}
+    const p=ink.drawing.p,n=p.length;
+    if(Math.abs(p[n-3]-pt[0])+Math.abs(p[n-2]-pt[1])<4)continue;
+    p.push(...pt);
+    if(ink.drawing.t==="pen"){
+      const W=stage.getBoundingClientRect().width;
+      drawStroke({...ink.drawing,p:p.slice(-6)},W);
+    }
+  }
+  if(ink.drawing&&ink.drawing.t==="hl")redraw();
+});
+function endStroke(e){
+  if(e.pointerId!==ink.pid)return;ink.pid=null;
+  if(ink.drawing){ink.strokes.push(ink.drawing);ink.undo.push({add:ink.drawing});ink.drawing=null;redraw();queueInkSave()}
+  else if(ink.erased){if(ink.erased.length){ink.undo.push({removed:ink.erased});queueInkSave()}ink.erased=null}
+}
+cv.addEventListener("pointerup",endStroke);
+cv.addEventListener("pointercancel",endStroke);
+function inkUndo(){
+  const u=ink.undo.pop();if(!u)return;
+  if(u.add)ink.strokes=ink.strokes.filter(s=>s!==u.add);else ink.strokes.push(...u.removed);
+  redraw();queueInkSave();
+}
+function queueInkSave(){$("inkStat").textContent="儲存中…";clearTimeout(ink.timer);ink.timer=setTimeout(()=>{ink.timer=null;saveInk(ink.key,ink.strokes)},800)}
+async function saveInk(key,strokes){
+  const data={strokes,updatedAt:Date.now()};
+  try{
+    if(inkCol){ink.saving=true;await inkCol.doc(key).set(data)}
+    else{try{localStorage.setItem("cal.ink."+key,JSON.stringify(strokes))}catch(e){throw e}}
+    if(key===ink.key)$("inkStat").textContent="手寫已儲存";
+  }catch(e){$("inkStat").textContent="手寫沒有存成功"+(e?.code==="quota_exceeded"||e?.code==="resource_exhausted"?"：這週寫得太多了，請清掉一些":"，請稍後再試")}
+  finally{ink.saving=false}
+}
+function loadInk(key,force){
+  if(ink.key===key&&!force)return;
+  if(ink.timer&&ink.key){clearTimeout(ink.timer);ink.timer=null;saveInk(ink.key,ink.strokes)}
+  ink.key=key;ink.strokes=[];ink.undo=[];ink.drawing=null;ink.erased=null;
+  if(ink.unsub){ink.unsub();ink.unsub=null}
+  $("inkStat").textContent="";
+  if(inkCol){
+    ink.unsub=inkCol.doc(key).onSnapshot(s=>{
+      if(ink.key!==key||ink.drawing||ink.erased||ink.timer||ink.saving)return;
+      const d=s.exists?s.data():null;ink.strokes=Array.isArray(d?.strokes)?d.strokes:[];redraw();
+    },()=>{});
+  }else{try{const v=JSON.parse(localStorage.getItem("cal.ink."+key)||"[]");if(Array.isArray(v))ink.strokes=v}catch(e){}}
+  redraw();
+}
+function setInk(on){
+  ink.on=on;stage.classList.toggle("inking",on);$("inktools").hidden=!on;
+  $("inkToggle").setAttribute("aria-pressed",String(on));$("inkToggle").textContent=on?"✎ 手寫中（點此結束）":"✎ 手寫";
+}
+$("inkToggle").onclick=()=>setInk(!ink.on);
+function pick(groupSel,attr,val){document.querySelectorAll(groupSel).forEach(b=>b.setAttribute("aria-pressed",String(b.dataset[attr]===val)))}
+document.querySelectorAll("[data-color]").forEach(b=>b.onclick=()=>{ink.color=b.dataset.color;pick("[data-color]","color",ink.color);if(ink.tool!=="pen"){ink.tool="pen";pick("[data-tool]","tool","pen")}});
+document.querySelectorAll("[data-size]").forEach(b=>b.onclick=()=>{ink.size=+b.dataset.size;pick("[data-size]","size",b.dataset.size)});
+document.querySelectorAll("[data-tool]").forEach(b=>b.onclick=()=>{ink.tool=b.dataset.tool;pick("[data-tool]","tool",ink.tool)});
+$("inkUndo").onclick=inkUndo;
+let clearArmed=false;
+$("inkClear").onclick=()=>{
+  if(!clearArmed){clearArmed=true;$("inkClear").textContent="再按一次確認清除";setTimeout(()=>{clearArmed=false;$("inkClear").textContent="清除本週手寫"},3000);return}
+  clearArmed=false;$("inkClear").textContent="清除本週手寫";
+  if(!ink.strokes.length)return;ink.undo.push({removed:ink.strokes});ink.strokes=[];redraw();queueInkSave();toast("已清除，可以按「復原」救回來");
+};
+document.addEventListener("keydown",e=>{if(ink.on&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"&&!e.target.closest("input,textarea")){e.preventDefault();inkUndo()}});
+addEventListener("pagehide",()=>{if(ink.timer){clearTimeout(ink.timer);ink.timer=null;saveInk(ink.key,ink.strokes)}});
+
+function renderDay(){
+  const d=parse(state.sel);const l=lunar(d);
+  const h=$("dayTitle");h.textContent=`${d.getMonth()+1} 月 ${d.getDate()} 日`;
+  const sub=document.createElement("span");sub.textContent=`星期${WD[d.getDay()]}${l?" · 農曆"+l.m+l.d:""}`;h.append(sub);
+  const hol=HOLIDAYS[state.sel];if(hol){const t=document.createElement("span");t.className="hol-tag";t.textContent=hol;h.append(t)}
+  const ul=$("agenda");ul.textContent="";
+  const evs=eventsOn(state.sel);
+  if(!evs.length){const p=document.createElement("li");p.className="empty";p.textContent="這天還沒有行程，用下方表單新增一筆。";ul.append(p)}
+  for(const e of evs){
+    const li=document.createElement("li");const b=document.createElement("button");b.type="button";b.style.setProperty("--c",catVar(e.cat));
+    const t=document.createElement("span");t.className="t";t.textContent=e.start?(e.end?`${e.start}\n–${e.end}`:e.start):"全天";t.style.whiteSpace="pre-line";
+    const ttl=document.createElement("span");ttl.className="ttl";ttl.textContent=e.title;
+    const tg=document.createElement("span");tg.className="tag";tg.textContent=(CATS[e.cat]||CATS.other).n+(e.example?"・範例":"");ttl.append(tg);
+    b.append(t,ttl);
+    if(e.note){const n=document.createElement("span");n.className="note";n.textContent=e.note;b.append(n)}
+    b.onclick=()=>startEdit(e.id);b.setAttribute("aria-label",`編輯：${e.title}`);
+    li.append(b);ul.append(li);
+  }
+}
+
+function resetForm(){
+  state.editing=null;$("form").reset();$("fDate").value=state.sel;$("fCat").value="work";
+  $("formTitle").textContent="新增行程";$("saveBtn").textContent="新增";$("cancelBtn").hidden=true;$("delBtn").hidden=true;$("delBtn").textContent="刪除";delArmed=false;
+}
+function startEdit(id){
+  const e=state.events.get(id);if(!e)return;state.editing=id;
+  $("fTitle").value=e.title;$("fDate").value=e.date;$("fCat").value=e.cat in CATS?e.cat:"other";$("fStart").value=e.start||"";$("fEnd").value=e.end||"";$("fNote").value=e.note||"";
+  $("formTitle").textContent="編輯行程";$("saveBtn").textContent="儲存";$("cancelBtn").hidden=false;$("delBtn").hidden=false;$("fTitle").focus();
+}
+let toastTimer;function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,2200)}
+
+/* ---- storage: shared db when available, otherwise this browser ---- */
+let col=null,notesCol=null;
+try{state.notes=new Map(JSON.parse(localStorage.getItem("cal.notes")||"[]"))}catch(e){}
+const local={
+  load(){try{return JSON.parse(localStorage.getItem("cal.events")||"[]")}catch(e){return[]}},
+  save(){try{localStorage.setItem("cal.events",JSON.stringify([...state.events.values()]))}catch(e){}}
+};
+async function saveEvent(id,data){
+  if(col){await col.doc(id).set(data)}else{state.events.set(id,{id,...data});local.save();render()}
+}
+async function deleteEvent(id){
+  if(col){await col.doc(id).delete()}else{state.events.delete(id);local.save();render()}
+}
+
+$("form").addEventListener("submit",async ev=>{
+  ev.preventDefault();
+  const data={title:$("fTitle").value.trim(),date:$("fDate").value,cat:$("fCat").value,start:$("fStart").value,end:$("fEnd").value,note:$("fNote").value.trim(),updatedAt:Date.now()};
+  if(!data.title||!data.date)return;
+  if(data.start&&data.end&&data.end<data.start){toast("結束時間要晚於開始時間");return}
+  const id=state.editing||("e"+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+  const was=state.editing;
+  try{await saveEvent(id,data);state.sel=data.date;const dd=parse(data.date);state.view=new Date(dd.getFullYear(),dd.getMonth(),1,12);state.week=mondayOf(dd);resetForm();render();toast(was?"已儲存":"已新增")}
+  catch(e){toast("沒有存成功："+(e?.code==="not_granted"?"你沒有這本日曆的編輯權限":"請稍後再試"))}
+});
+$("cancelBtn").onclick=()=>resetForm();
+let delArmed=false;
+$("delBtn").onclick=async()=>{
+  if(!delArmed){delArmed=true;$("delBtn").textContent="再按一次確認刪除";return}
+  const id=state.editing;try{await deleteEvent(id);resetForm();render();toast("已刪除")}catch(e){toast("刪除失敗，請稍後再試")}
+};
+function step(n){
+  if(state.mode==="week"){const w=new Date(state.week);w.setDate(w.getDate()+7*n);state.week=w}
+  else state.view=new Date(state.view.getFullYear(),state.view.getMonth()+n,1,12);
+  render();
+}
+$("prev").onclick=()=>step(-1);
+$("next").onclick=()=>step(1);
+$("todayBtn").onclick=()=>{state.view=new Date(today.getFullYear(),today.getMonth(),1,12);state.week=mondayOf(today);state.sel=iso(today);if(!state.editing)$("fDate").value=state.sel;render()};
+function setMode(m){
+  state.mode=m;const d=parse(state.sel);
+  if(m==="week")state.week=mondayOf(d);else state.view=new Date(d.getFullYear(),d.getMonth(),1,12);
+  try{localStorage.setItem("cal.mode",m)}catch(e){}
+  render();
+}
+$("modeMonth").onclick=()=>setMode("month");
+$("modeWeek").onclick=()=>setMode("week");
+document.addEventListener("keydown",e=>{if(e.target.closest("input,textarea,select"))return;if(e.key==="ArrowLeft")$("prev").click();if(e.key==="ArrowRight")$("next").click();if(e.key==="t")$("todayBtn").click()});
+
+function useLocal(reason){
+  col=null;state.events=new Map(local.load().map(e=>[e.id,e]));
+  $("storeNote").textContent=reason;setStatus("存在這個瀏覽器");render();
+}
+
+/* ---- 本機資料庫（IndexedDB）：介面和 Firestore 相同，之後接雲端同步只要換掉這一層 ---- */
+function openIDB(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open("my-calendar",1);
+    r.onupgradeneeded=()=>{for(const n of["events","notes","ink"])if(!r.result.objectStoreNames.contains(n))r.result.createObjectStore(n)};
+    r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);r.onblocked=()=>rej(new Error("blocked"));
+  });
+}
+function makeLocalDb(idb){
+  const colSubs={},docSubs={};
+  const req=(name,mode,fn)=>new Promise((res,rej)=>{const t=idb.transaction(name,mode);const q=fn(t.objectStore(name));t.oncomplete=()=>res(q.result);t.onerror=t.onabort=()=>rej(t.error)});
+  const mkDoc=(id,data)=>({id,exists:data!==undefined,data:()=>data});
+  async function all(name){const[k,v]=await Promise.all([req(name,"readonly",s=>s.getAllKeys()),req(name,"readonly",s=>s.getAll())]);return k.map((id,i)=>mkDoc(id,v[i]))}
+  async function changed(name,id,data){
+    (docSubs[name+"/"+id]||[]).forEach(f=>f(mkDoc(id,data)));
+    if(colSubs[name]?.size){const docs=await all(name);colSubs[name].forEach(f=>f({docs,size:docs.length,empty:!docs.length}))}
+  }
+  return{collection(name){return{
+    doc(id){return{
+      async set(d){const v=structuredClone(d);await req(name,"readwrite",s=>s.put(v,id));changed(name,id,v)},
+      async delete(){await req(name,"readwrite",s=>s.delete(id));changed(name,id,undefined)},
+      onSnapshot(next,err){
+        const k=name+"/"+id;(docSubs[k]??=new Set).add(next);
+        req(name,"readonly",s=>s.get(id)).then(v=>next(mkDoc(id,v)),e=>err&&err(e));
+        return()=>docSubs[k].delete(next);
+      }
+    }},
+    onSnapshot(next,err){
+      (colSubs[name]??=new Set).add(next);
+      all(name).then(docs=>next({docs,size:docs.length,empty:!docs.length}),e=>err&&err(e));
+      return()=>colSubs[name].delete(next);
+    },
+    all:()=>all(name)
+  }}};
+}
+
+/* ---- 備份：匯出／匯入 JSON ---- */
+let appDb=null;
+$("exportBtn").onclick=async()=>{
+  const out={app:"my-calendar",version:1,exportedAt:new Date().toISOString(),events:{},notes:{},ink:{}};
+  if(appDb){for(const n of["events","notes","ink"])for(const d of await appDb.collection(n).all())out[n][d.id]=d.data()}
+  else{for(const e of state.events.values()){const{id,...rest}=e;out.events[id]=rest}}
+  const blob=new Blob([JSON.stringify(out)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`my-calendar-backup-${iso(new Date())}.json`;
+  document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  toast("已匯出備份");
+};
+$("importFile").onchange=async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  try{
+    const data=JSON.parse(await f.text());
+    if(data.app!=="my-calendar")throw new Error("format");
+    let n=0;
+    for(const name of["events","notes","ink"]){
+      for(const[id,v]of Object.entries(data[name]||{})){
+        if(appDb)await appDb.collection(name).doc(id).set(v);
+        else if(name==="events"){state.events.set(id,{id,...v});local.save()}
+        if(name==="events")n++;
+      }
+    }
+    if(!appDb)render();
+    if(ink.key)loadInk(ink.key,true);
+    toast(`已匯入 ${n} 筆行程`);
+  }catch(err){toast("這個檔案不是日曆備份，請選擇用「匯出備份」存下來的 .json 檔")}
+};
+
+renderFilters();resetForm();render();setStatus("讀取中…");
+
+(async()=>{
+  let db=null;
+  try{db=makeLocalDb(await openIDB())}catch(e){}
+  if(!db){useLocal("這個瀏覽器不能使用本機資料庫（可能是無痕模式），行程只會暫存在這個分頁。");$("footInfo").textContent="目前無法長期保存資料。";return}
+  appDb=db;
+  inkCol=db.collection("ink");if(ink.key)loadInk(ink.key,true);
+  const nc=db.collection("notes");
+  nc.onSnapshot(snap=>{notesCol=nc;state.notes=new Map(snap.docs.map(d=>[d.id,d.data()]));if(state.mode==="week")render()},()=>{});
+  const c=db.collection("events");
+  c.onSnapshot(snap=>{
+    col=c;
+    state.events=new Map(snap.docs.map(d=>[d.id,{id:d.id,...d.data()}]));
+    setStatus(`存在這台裝置 · ${snap.size} 筆行程`);$("storeNote").textContent="";render();
+  },()=>useLocal("讀取本機資料失敗，行程暫時存在這個分頁。"));
+  try{navigator.storage?.persist?.()}catch(e){}
+})();
+
+if("serviceWorker"in navigator&&location.protocol==="https:"){
+  addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+</script>
+</body>
+</html>

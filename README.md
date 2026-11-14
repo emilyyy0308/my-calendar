@@ -1,1 +1,42 @@
-# my-calendar
+# 我的日曆
+
+個人日曆網頁 App，可以安裝到平板和筆電的主畫面，沒有網路也能用。
+
+## 功能
+
+- **月曆**：農曆日期、台灣國定假日（2026–2027）、分類顏色篩選
+- **手帳式週計畫**：左頁週一到週四，右頁週五到週日加「本週筆記」
+- **手寫**：在週計畫上直接寫字。可選筆、螢光筆、橡皮擦，四種顏色、三種粗細，也能復原。觸控筆會依力道改變粗細，並忽略手掌誤觸
+- **離線使用**：資料存在裝置上（IndexedDB），安裝後沒網路也能開
+- **備份**：頁面底部可以「匯出備份」和「匯入備份」（.json 檔）
+
+## 網址
+
+部署後的網址：`https://emilyyy0308.github.io/my-calendar/`
+
+## 安裝到主畫面
+
+- **iPad（Safari）**：按「分享」→「加入主畫面」
+- **Android 平板（Chrome）**：按「⋮」→「安裝應用程式」或「加到主畫面」
+- **筆電（Chrome / Edge）**：按網址列右邊的「安裝」圖示
+
+## 部署方式
+
+推送到 `main` 分支後，GitHub Actions（`.github/workflows/pages.yml`）會自動部署到 GitHub Pages。
+
+第一次部署前要先開啟 Pages：repository 的 **Settings → Pages → Build and deployment → Source** 選 **GitHub Actions**。
+
+## 檔案
+
+| 檔案 | 用途 |
+|---|---|
+| `index.html` | 整個日曆（畫面、樣式、程式） |
+| `sw.js` | 離線快取（Service Worker） |
+| `manifest.webmanifest` | 安裝到主畫面用的設定 |
+| `icons/` | App 圖示 |
+
+更新程式後，記得把 `sw.js` 裡的 `VERSION` 改成新的值（例如 `cal-v2`），這樣已安裝的裝置才會清掉舊的快取。目前沒有網路時，裝置會先使用快取的版本。
+
+## 之後的計畫
+
+- 用 Firebase 做雲端同步（平板和筆電共用同一份資料，用 Google 帳號登入）
